@@ -1,0 +1,13 @@
+{
+	"files.exclude": {
+		"out": true,
+		"node_modules/": true,
+		".history/": true
+	},
+	"search.exclude": {
+		"out": true
+	},
+	"typescript.tsc.autoDetect": "off",
+	"terminal.integrated.shell.windows": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+	"terminal.integrated.shellArgs.windows": []
+}
