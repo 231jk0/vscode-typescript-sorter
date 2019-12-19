@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 
-import * as Sorter from './sorter';
+import * as TypescriptSorter from './typescriptSorter';
+import { getSettings } from './config';
 
 export function activate(context: vscode.ExtensionContext) {
 	const commands = [
 		vscode.commands.registerCommand('typescriptSorter.sortImports', async () => {
-			const successInfo = await Sorter.sortImports();
+			const successInfo = await TypescriptSorter.sortImports();
 
 			if (successInfo) {
 				vscode.window.showInformationMessage('Successfully sorted lines!');
@@ -19,12 +20,16 @@ export function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(_command);
 	});
 
-	/* vscode.workspace.onDidOpenTextDocument(() => {
-		const { sortOnFileOpen } = Sorter.getSettings();
+	vscode.window.onDidChangeVisibleTextEditors(async () => {
+		const { sortOnFileOpen } = getSettings();
 
 		if (sortOnFileOpen) {
-			Sorter.helloWorld();
+			try {
+				await TypescriptSorter.sortImports();
+			} catch (error) {
+			}
 		}
-	}); */
+	});
 }
+
 export function deactivate() {}

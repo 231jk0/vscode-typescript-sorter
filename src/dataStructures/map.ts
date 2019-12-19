@@ -16,7 +16,7 @@ export default class Map<T = SortInfo> {
 		this._data = {};
 	}
 
-	static buildFromArray(array: string[] | string[][]) {
+	static buildFromArray(array: (string | string[])[]) {
 		const map = new Map();
 		let groupWeight = 0;
 
@@ -24,22 +24,12 @@ export default class Map<T = SortInfo> {
 			++groupWeight;
 
 			if (isString(element)) {
-				map.add(
-					element,
-					{
-						groupWeight,
-						elementWeight: 0
-					}
-				);
+				const value = { groupWeight, elementWeight: 0 };
+				map.add(element, value);
 			} else {
 				element.forEach((key, index) => {
-					map.add(
-						key,
-						{
-							groupWeight,
-							elementWeight: index
-						}
-					);
+					const value = { groupWeight, elementWeight: index };
+					map.add(key, value);
 				});
 			}
 		}

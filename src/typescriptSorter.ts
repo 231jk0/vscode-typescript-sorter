@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
-import { regularExpressionToDetermineRootOfImportLine, emptyLineSortInfo } from './constants';
-
+import { EXPRESSION_TO_DETERMINE_ROOT_OF_IMPORT_LINE, EMPTY_LINE_SORT_INFO, EXPRESSION_TO_DETERMINE_ROOT_OF_REQUIRE_LINE } from './constants';
 import Map, { SortInfo } from './dataStructures/map';
+import { getSettings } from './config';
 
 export interface LineWithSortInfo {
 	content: string;
@@ -11,11 +11,13 @@ export interface LineWithSortInfo {
 }
 
 const _determineRootFolderOfImport = (line: string) => {
-	const result = regularExpressionToDetermineRootOfImportLine.exec(line);
+	const importResult = EXPRESSION_TO_DETERMINE_ROOT_OF_IMPORT_LINE.exec(line);
+	const importRootFolder = importResult && importResult[1]; // importRootFolder will always be on result[1] if it gets captured
 
-	const importRootFolder = result && result[1]; // importRootFolder will always be on result[1] if it gets captured
+	const requireResult = EXPRESSION_TO_DETERMINE_ROOT_OF_REQUIRE_LINE.exec(line);
+	const requireRootFolder = requireResult && requireResult[1]; // requireRootFolder will always be on result[1] if it gets captured
 
-	return importRootFolder;
+	return importRootFolder || requireRootFolder;
 }
 
 const _sortLines = (firstLine: LineWithSortInfo, secondLine: LineWithSortInfo) => {
@@ -45,7 +47,7 @@ const _getSeparatedLines = (lines: LineWithSortInfo[]): (LineWithSortInfo)[] => 
 		const { weights: { groupWeight: currentLineGroupWeight } } = lines[i];
 
 		if (prevLineGroupWeight !== currentLineGroupWeight) {
-			newLines.push(emptyLineSortInfo);
+			newLines.push(EMPTY_LINE_SORT_INFO);
 		}
 
 		newLines.push(lines[i]);
@@ -58,20 +60,10 @@ export const _getExtensionFromFilename = (fileName: string) => {
 	return fileName.substr(fileName.lastIndexOf('.') + 1);
 }
 
-export const getSettings = () => {
-	const orderOfImports = vscode.workspace.getConfiguration('typescriptSorter').get('orderOfImports') as string[];
-	const sortOnFileOpen = vscode.workspace.getConfiguration('typescriptSorter').get('sortOnFileOpen') as string[];
-
-	return {
-		orderOfImports,
-		sortOnFileOpen
-	}
-}
-
 export const sortImports = async (): Promise<boolean> => {
 	const { activeTextEditor } = vscode.window;
 	const { orderOfImports } = getSettings();
-	const rootFolderWeight = Map.buildFromArray(orderOfImports);
+	const rootFolderWeightMap = Map.buildFromArray(orderOfImports);
 
 	let lastImportLine = -1;
 	let lastImportLineLength = -1;
@@ -95,8 +87,8 @@ export const sortImports = async (): Promise<boolean> => {
 		const line = activeTextEditor.document.lineAt(i).text;
 		const importRootFolder = _determineRootFolderOfImport(line);
 		const sortWeights: SortInfo = (
-			rootFolderWeight.getValue(importRootFolder)
-			|| rootFolderWeight.getValue('other')
+			rootFolderWeightMap.getValue(importRootFolder)
+			|| rootFolderWeightMap.getValue('other')
 			|| { groupWeight: 1000, elementWeight: 1000 }
 		);
 
