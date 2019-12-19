@@ -1,12 +1,30 @@
 import * as vscode from 'vscode';
 
-export function activate(context: vscode.ExtensionContext) {
-	console.log('Congratulations, your extension "test-extension" is now active!');
+import * as Sorter from './sorter';
 
-	let disposable = vscode.commands.registerCommand('extension.helloWorld', () => {
-		vscode.window.showInformationMessage('Hello World!');
+export function activate(context: vscode.ExtensionContext) {
+	const commands = [
+		vscode.commands.registerCommand('extension.helloWorld', async () => {
+			const successInfo = await Sorter.helloWorld();
+
+			if (successInfo) {
+				vscode.window.showInformationMessage('Successfully sorted lines!');
+			} else {
+				vscode.window.showWarningMessage('Something Went Wrong!');
+			}
+		})
+	];
+
+	commands.forEach((_command) => {
+		context.subscriptions.push(_command);
 	});
 
-	context.subscriptions.push(disposable);
+	vscode.workspace.onDidOpenTextDocument(() => {
+		const { sortOnFileOpen } = Sorter.getSettings();
+
+		if (sortOnFileOpen) {
+			Sorter.helloWorld();
+		}
+	});
 }
 export function deactivate() {}

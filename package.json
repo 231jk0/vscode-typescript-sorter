@@ -10,10 +10,26 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:extension.helloWorld"
+		"*"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"configuration": {
+			"type": "object",
+			"title": "Sorter",
+			"properties": {
+				"sorter.orderOfImports": {
+					"type": "array",
+					"default": ["ab-utils", "af-utils", "relative"],
+					"description": "Order of imports, e.g. ['ab-utils', 'af-utils', 'relative']"
+				},
+				"sorter.sortOnFileOpen": {
+					"type": "boolean",
+					"default": false,
+					"description": "If set to true, when file is opened, imports will be sorted automatically"
+				}
+			}
+		},
 		"commands": [
 			{
 				"command": "extension.helloWorld",
