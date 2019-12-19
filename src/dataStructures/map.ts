@@ -1,25 +1,53 @@
-type MapData = { [key: string]: any };
+type MapData<T> = { [key: string]: T };
 
-export default class Map {
-	_data: MapData;
+function isString(element: string | string[]): element is string {
+	return typeof element === 'string';
+}
+
+export interface SortInfo {
+	groupWeight: number;
+	elementWeight: number;
+}
+
+export default class Map<T = SortInfo> {
+	_data: MapData<T>;
 
 	constructor() {
 		this._data = {};
 	}
 
-	static buildFromArray(array: string[]) {
+	static buildFromArray(array: string[] | string[][]) {
 		const map = new Map();
+		let groupWeight = 0;
 
-		array.forEach((key, index) => {
-			const value = index + 1;
+		for (let element of array) {
+			++groupWeight;
 
-			map.add(key, value);
-		});
+			if (isString(element)) {
+				map.add(
+					element,
+					{
+						groupWeight,
+						elementWeight: 0
+					}
+				);
+			} else {
+				element.forEach((key, index) => {
+					map.add(
+						key,
+						{
+							groupWeight,
+							elementWeight: index
+						}
+					);
+				});
+			}
+		}
 
 		return map;
 	}
 
-	add(key: string, value: any) {
+	add(key: string, value: T) {
 		this._data[key] = value;
 	}
 

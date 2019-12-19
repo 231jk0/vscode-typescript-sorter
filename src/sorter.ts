@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 
-import { regularExpressionToDetermineRootOfImportLine } from './constants';
+import { regularExpressionToDetermineRootOfImportLine, emptyLineSortInfo } from './constants';
 
-import Map from './dataStructures/map';
+import Map, { SortInfo } from './dataStructures/map';
 
-interface LineWithSortInfo {
+export interface LineWithSortInfo {
 	content: string;
 	rootFolder: string;
-	weight: number;
+	weights: SortInfo;
 }
 
 const _determineRootFolderOfImport = (line: string) => {
@@ -19,11 +19,18 @@ const _determineRootFolderOfImport = (line: string) => {
 }
 
 const _sortLines = (firstLine: LineWithSortInfo, secondLine: LineWithSortInfo) => {
-	if (firstLine.weight !== secondLine.weight) {
-		return firstLine.weight - secondLine.weight;
+	const { weights: { groupWeight: firstGroupWeight, elementWeight: firstElementWeight }, rootFolder: firstRootFolder } = firstLine;
+	const { weights: { groupWeight: secondGroupWeight, elementWeight: secondElementWeight }, rootFolder: secondRootFolder } = secondLine;
+
+	if (firstGroupWeight !== secondGroupWeight) {
+		return firstGroupWeight - secondGroupWeight;
 	}
 
-	return firstLine.rootFolder.localeCompare(secondLine.rootFolder);
+	if (firstElementWeight !== secondElementWeight) {
+		return firstElementWeight - secondElementWeight;
+	}
+
+	return firstRootFolder.localeCompare(secondRootFolder);
 }
 
 const _getSeparatedLines = (lines: LineWithSortInfo[]): (LineWithSortInfo)[] => {
@@ -34,8 +41,11 @@ const _getSeparatedLines = (lines: LineWithSortInfo[]): (LineWithSortInfo)[] => 
 	const newLines: LineWithSortInfo[] = [lines[0]];
 
 	for (let i = 1; i < lines.length; i++) {
-		if (lines[i - 1].weight !== lines[i].weight) {
-			newLines.push({ content: '', rootFolder: '', weight: 0 });
+		const { weights: { groupWeight: prevLineGroupWeight } } = lines[i - 1];
+		const { weights: { groupWeight: currentLineGroupWeight } } = lines[i];
+
+		if (prevLineGroupWeight !== currentLineGroupWeight) {
+			newLines.push(emptyLineSortInfo);
 		}
 
 		newLines.push(lines[i]);
@@ -49,8 +59,8 @@ export const _getExtensionFromFilename = (fileName: string) => {
 }
 
 export const getSettings = () => {
-	const orderOfImports = vscode.workspace.getConfiguration('sorter').get('orderOfImports') as string[];
-	const sortOnFileOpen = vscode.workspace.getConfiguration('sorter').get('sortOnFileOpen') as string[];
+	const orderOfImports = vscode.workspace.getConfiguration('typescriptSorter').get('orderOfImports') as string[];
+	const sortOnFileOpen = vscode.workspace.getConfiguration('typescriptSorter').get('sortOnFileOpen') as string[];
 
 	return {
 		orderOfImports,
@@ -58,7 +68,7 @@ export const getSettings = () => {
 	}
 }
 
-export const helloWorld = async (): Promise<boolean> => {
+export const sortImports = async (): Promise<boolean> => {
 	const { activeTextEditor } = vscode.window;
 	const { orderOfImports } = getSettings();
 	const rootFolderWeight = Map.buildFromArray(orderOfImports);
@@ -84,7 +94,11 @@ export const helloWorld = async (): Promise<boolean> => {
 	for (let i = 0; i < lineCount; i++) {
 		const line = activeTextEditor.document.lineAt(i).text;
 		const importRootFolder = _determineRootFolderOfImport(line);
-		const value = rootFolderWeight.getValue(importRootFolder) || rootFolderWeight.getValue('other');
+		const sortWeights: SortInfo = (
+			rootFolderWeight.getValue(importRootFolder)
+			|| rootFolderWeight.getValue('other')
+			|| { groupWeight: 1000, elementWeight: 1000 }
+		);
 
 		if (importRootFolder) {
 			lastImportLine = i;
@@ -93,9 +107,13 @@ export const helloWorld = async (): Promise<boolean> => {
 			linesWithInfoForSort.push({
 				content: line,
 				rootFolder: importRootFolder,
-				weight: value
+				weights: sortWeights
 			});
 		}
+	}
+
+	if (lastImportLine === -1) {
+		return true; // No imports to sort.
 	}
 
 	const sortedLinesWithInfoForSort = linesWithInfoForSort.sort(_sortLines);

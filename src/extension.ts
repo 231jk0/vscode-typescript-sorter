@@ -4,8 +4,8 @@ import * as Sorter from './sorter';
 
 export function activate(context: vscode.ExtensionContext) {
 	const commands = [
-		vscode.commands.registerCommand('extension.helloWorld', async () => {
-			const successInfo = await Sorter.helloWorld();
+		vscode.commands.registerCommand('typescriptSorter.sortImports', async () => {
+			const successInfo = await Sorter.sortImports();
 
 			if (successInfo) {
 				vscode.window.showInformationMessage('Successfully sorted lines!');
@@ -19,12 +19,12 @@ export function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(_command);
 	});
 
-	vscode.workspace.onDidOpenTextDocument(() => {
+	/* vscode.workspace.onDidOpenTextDocument(() => {
 		const { sortOnFileOpen } = Sorter.getSettings();
 
 		if (sortOnFileOpen) {
 			Sorter.helloWorld();
 		}
-	});
+	}); */
 }
 export function deactivate() {}

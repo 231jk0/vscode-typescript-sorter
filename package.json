@@ -1,6 +1,6 @@
 {
-	"name": "test-extension",
-	"displayName": "test-extension",
+	"name": "typescript-sorter",
+	"displayName": "typescript-sorter",
 	"description": "",
 	"version": "0.0.1",
 	"engines": {
@@ -16,14 +16,14 @@
 	"contributes": {
 		"configuration": {
 			"type": "object",
-			"title": "Sorter",
+			"title": "Typescript Sorter",
 			"properties": {
-				"sorter.orderOfImports": {
+				"typescriptSorter.orderOfImports": {
 					"type": "array",
-					"default": ["ab-utils", "af-utils", "relative"],
-					"description": "Order of imports, e.g. ['ab-utils', 'af-utils', 'relative']"
+					"default": ["ab-utils", "af-utils", "other"],
+					"description": "Order of imports, e.g. ['ab-utils', 'af-utils', 'other']"
 				},
-				"sorter.sortOnFileOpen": {
+				"typescriptSorter.sortOnFileOpen": {
 					"type": "boolean",
 					"default": false,
 					"description": "If set to true, when file is opened, imports will be sorted automatically"
@@ -32,8 +32,8 @@
 		},
 		"commands": [
 			{
-				"command": "extension.helloWorld",
-				"title": "Hello World"
+				"command": "typescriptSorter.sortImports",
+				"title": "Typescript Sorter: Sort Imports"
 			}
 		]
 	},
