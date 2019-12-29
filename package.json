@@ -22,8 +22,13 @@
 			"properties": {
 				"typescriptSorter.orderOfImports": {
 					"type": "array",
-					"default": ["ab-utils", "af-utils", "other"],
-					"description": "Order of imports, e.g. ['ab-utils', 'af-utils', 'other']"
+					"default": [
+						"module-imports",
+						"ab-utils",
+						"af-utils",
+						"default"
+					],
+					"description": "Order of imports, e.g. ['module-imports', 'ab-utils', 'af-utils', 'default']"
 				},
 				"typescriptSorter.sortOnFileOpen": {
 					"type": "boolean",

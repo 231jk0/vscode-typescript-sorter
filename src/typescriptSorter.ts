@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { EXPRESSION_TO_DETERMINE_ROOT_OF_IMPORT_LINE, EMPTY_LINE_SORT_INFO, EXPRESSION_TO_DETERMINE_ROOT_OF_REQUIRE_LINE } from './constants';
+import { EMPTY_LINE_SORT_INFO, EXPRESSION_TO_DETERMINE_ROOT_OF_IMPORT_LINE, EXPRESSION_TO_DETERMINE_ROOT_OF_REQUIRE_LINE, EXPRESSION_TO_DETERMINE_ROOT_OF_MODULE_IMPORT_LINE, EXPRESSION_TO_DETERMINE_ROOT_OF_MODULE_REQUIRE_LINE, MODULE_IMPORTS, DEFAULT, EXPRESSION_TO_DETERMINE_EMPTY_LINE } from './constants';
 import Map, { SortInfo } from './dataStructures/map';
 import { getSettings } from './config';
 
@@ -10,6 +10,16 @@ export interface LineWithSortInfo {
 	weights: SortInfo;
 }
 
+const _addWeightsIfMissing = (map: Map<SortInfo>) => {
+	if (!map.getValue(MODULE_IMPORTS)) {
+		map.add(MODULE_IMPORTS, { groupWeight: -1000, elementWeight: -1000 });
+	}
+
+	if (!map.getValue(DEFAULT)) {
+		map.add(DEFAULT, { groupWeight: 1000, elementWeight: 1000 });
+	}
+}
+
 const _determineRootFolderOfImport = (line: string) => {
 	const importResult = EXPRESSION_TO_DETERMINE_ROOT_OF_IMPORT_LINE.exec(line);
 	const importRootFolder = importResult && importResult[1]; // importRootFolder will always be on result[1] if it gets captured
@@ -17,7 +27,20 @@ const _determineRootFolderOfImport = (line: string) => {
 	const requireResult = EXPRESSION_TO_DETERMINE_ROOT_OF_REQUIRE_LINE.exec(line);
 	const requireRootFolder = requireResult && requireResult[1]; // requireRootFolder will always be on result[1] if it gets captured
 
-	return importRootFolder || requireRootFolder;
+	if (importRootFolder || requireRootFolder) {
+		return importRootFolder || requireRootFolder;
+	}
+
+	const importModuleResult = EXPRESSION_TO_DETERMINE_ROOT_OF_MODULE_IMPORT_LINE.test(line);
+	const requireModuleResult = EXPRESSION_TO_DETERMINE_ROOT_OF_MODULE_REQUIRE_LINE.test(line);
+
+	if (importModuleResult || requireModuleResult) {
+		return MODULE_IMPORTS;
+	}
+}
+
+const _isEmptyLine = (line: string) => {
+	return EXPRESSION_TO_DETERMINE_EMPTY_LINE.test(line);
 }
 
 const _sortLines = (firstLine: LineWithSortInfo, secondLine: LineWithSortInfo) => {
@@ -65,6 +88,8 @@ export const sortImports = async (): Promise<boolean> => {
 	const { orderOfImports } = getSettings();
 	const rootFolderWeightMap = Map.buildFromArray(orderOfImports);
 
+	_addWeightsIfMissing(rootFolderWeightMap);
+
 	let lastImportLine = -1;
 	let lastImportLineLength = -1;
 
@@ -86,11 +111,7 @@ export const sortImports = async (): Promise<boolean> => {
 	for (let i = 0; i < lineCount; i++) {
 		const line = activeTextEditor.document.lineAt(i).text;
 		const importRootFolder = _determineRootFolderOfImport(line);
-		const sortWeights: SortInfo = (
-			rootFolderWeightMap.getValue(importRootFolder)
-			|| rootFolderWeightMap.getValue('other')
-			|| { groupWeight: 1000, elementWeight: 1000 }
-		);
+		const sortWeights: SortInfo = rootFolderWeightMap.getValue(importRootFolder) || rootFolderWeightMap.getValue(DEFAULT);
 
 		if (importRootFolder) {
 			lastImportLine = i;
@@ -101,6 +122,10 @@ export const sortImports = async (): Promise<boolean> => {
 				rootFolder: importRootFolder,
 				weights: sortWeights
 			});
+		} else if (_isEmptyLine(line)) {
+			continue;
+		} else {
+			break;
 		}
 	}
 
