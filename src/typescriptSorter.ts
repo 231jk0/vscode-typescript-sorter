@@ -1,51 +1,68 @@
 import * as vscode from 'vscode';
 
-import { EMPTY_LINE_SORT_INFO, EXPRESSION_TO_DETERMINE_ROOT_OF_IMPORT_LINE, EXPRESSION_TO_DETERMINE_ROOT_OF_REQUIRE_LINE, EXPRESSION_TO_DETERMINE_ROOT_OF_MODULE_IMPORT_LINE, EXPRESSION_TO_DETERMINE_ROOT_OF_MODULE_REQUIRE_LINE, MODULE_IMPORTS, DEFAULT, EXPRESSION_TO_DETERMINE_EMPTY_LINE } from './constants';
+import * as Constants from './constants';
 import Map, { SortInfo } from './dataStructures/map';
 import { getSettings } from './config';
 
 export interface LineWithSortInfo {
 	content: string;
 	rootFolder: string;
+	importValue: string;
 	weights: SortInfo;
 }
 
 const _addWeightsIfMissing = (map: Map<SortInfo>) => {
-	if (!map.getValue(MODULE_IMPORTS)) {
-		map.add(MODULE_IMPORTS, { groupWeight: -1000, elementWeight: -1000 });
+	if (!map.getValue(Constants.MODULE_IMPORTS)) {
+		map.add(Constants.MODULE_IMPORTS, { groupWeight: -1000, elementWeight: -1000 });
 	}
 
-	if (!map.getValue(DEFAULT)) {
-		map.add(DEFAULT, { groupWeight: 1000, elementWeight: 1000 });
+	if (!map.getValue(Constants.DEFAULT)) {
+		map.add(Constants.DEFAULT, { groupWeight: 1000, elementWeight: 1000 });
 	}
 }
 
 const _determineRootFolderOfImport = (line: string) => {
-	const importResult = EXPRESSION_TO_DETERMINE_ROOT_OF_IMPORT_LINE.exec(line);
+	const importResult = Constants.EXPRESSION_TO_DETERMINE_ROOT_OF_IMPORT_LINE.exec(line);
 	const importRootFolder = importResult && importResult[1]; // importRootFolder will always be on result[1] if it gets captured
 
-	const requireResult = EXPRESSION_TO_DETERMINE_ROOT_OF_REQUIRE_LINE.exec(line);
+	const requireResult = Constants.EXPRESSION_TO_DETERMINE_ROOT_OF_REQUIRE_LINE.exec(line);
 	const requireRootFolder = requireResult && requireResult[1]; // requireRootFolder will always be on result[1] if it gets captured
 
 	if (importRootFolder || requireRootFolder) {
 		return importRootFolder || requireRootFolder;
 	}
 
-	const importModuleResult = EXPRESSION_TO_DETERMINE_ROOT_OF_MODULE_IMPORT_LINE.test(line);
-	const requireModuleResult = EXPRESSION_TO_DETERMINE_ROOT_OF_MODULE_REQUIRE_LINE.test(line);
+	const importModuleResult = Constants.EXPRESSION_TO_DETERMINE_ROOT_OF_MODULE_IMPORT_LINE.test(line);
+	const requireModuleResult = Constants.EXPRESSION_TO_DETERMINE_ROOT_OF_MODULE_REQUIRE_LINE.test(line);
 
 	if (importModuleResult || requireModuleResult) {
-		return MODULE_IMPORTS;
+		return Constants.MODULE_IMPORTS;
 	}
 }
 
+const _determineValueOfImport = (line: string) => {
+	const importResult = Constants.EXPRESSION_TO_DETERMINE_VALUE_OF_IMPORT_LINE.exec(line);
+	const importValue = importResult && importResult[1]; // importValue will always be on result[1] if it gets captured
+
+	const requireResult = Constants.EXPRESSION_TO_DETERMINE_VALUE_OF_REQUIRE_LINE.exec(line);
+	const requireValue = requireResult && requireResult[1]; // requireValue will always be on result[1] if it gets captured
+
+	const importModuleResult = Constants.EXPRESSION_TO_DETERMINE_VALUE_OF_MODULE_IMPORT_LINE.exec(line);
+	const importModuleValue = importModuleResult && importModuleResult[1]; // importModuleValue will always be on result[1] if it gets captured
+
+	const requireModuleResult = Constants.EXPRESSION_TO_DETERMINE_VALUE_OF_MODULE_REQUIRE_LINE.exec(line);
+	const requireModuleValue = requireModuleResult && requireModuleResult[1]; // requireModuleValue will always be on result[1] if it gets captured
+	
+	return importValue || requireValue || importModuleValue || requireModuleValue;
+}
+
 const _isEmptyLine = (line: string) => {
-	return EXPRESSION_TO_DETERMINE_EMPTY_LINE.test(line);
+	return Constants.EXPRESSION_TO_DETERMINE_EMPTY_LINE.test(line);
 }
 
 const _sortLines = (firstLine: LineWithSortInfo, secondLine: LineWithSortInfo) => {
-	const { weights: { groupWeight: firstGroupWeight, elementWeight: firstElementWeight }, rootFolder: firstRootFolder } = firstLine;
-	const { weights: { groupWeight: secondGroupWeight, elementWeight: secondElementWeight }, rootFolder: secondRootFolder } = secondLine;
+	const { content: firstContent, weights: { groupWeight: firstGroupWeight, elementWeight: firstElementWeight }, rootFolder: firstRootFolder, importValue: firstImportValue } = firstLine;
+	const { content: secondContent, weights: { groupWeight: secondGroupWeight, elementWeight: secondElementWeight }, rootFolder: secondRootFolder, importValue: secondImportValue } = secondLine;
 
 	if (firstGroupWeight !== secondGroupWeight) {
 		return firstGroupWeight - secondGroupWeight;
@@ -55,7 +72,15 @@ const _sortLines = (firstLine: LineWithSortInfo, secondLine: LineWithSortInfo) =
 		return firstElementWeight - secondElementWeight;
 	}
 
-	return firstRootFolder.localeCompare(secondRootFolder);
+	if (firstRootFolder !== secondRootFolder) {
+		return firstRootFolder.localeCompare(secondRootFolder);
+	}
+
+	if (firstImportValue !== secondImportValue) {
+		return firstImportValue.localeCompare(secondImportValue);
+	}
+
+	return firstContent.localeCompare(secondContent);
 }
 
 const _getSeparatedLines = (lines: LineWithSortInfo[]): (LineWithSortInfo)[] => {
@@ -70,7 +95,7 @@ const _getSeparatedLines = (lines: LineWithSortInfo[]): (LineWithSortInfo)[] => 
 		const { weights: { groupWeight: currentLineGroupWeight } } = lines[i];
 
 		if (prevLineGroupWeight !== currentLineGroupWeight) {
-			newLines.push(EMPTY_LINE_SORT_INFO);
+			newLines.push(Constants.EMPTY_LINE_SORT_INFO);
 		}
 
 		newLines.push(lines[i]);
@@ -111,7 +136,8 @@ export const sortImports = async (): Promise<boolean> => {
 	for (let i = 0; i < lineCount; i++) {
 		const line = activeTextEditor.document.lineAt(i).text;
 		const importRootFolder = _determineRootFolderOfImport(line);
-		const sortWeights: SortInfo = rootFolderWeightMap.getValue(importRootFolder) || rootFolderWeightMap.getValue(DEFAULT);
+		const importValue = _determineValueOfImport(line);
+		const sortWeights: SortInfo = rootFolderWeightMap.getValue(importRootFolder) || rootFolderWeightMap.getValue(Constants.DEFAULT);
 
 		if (importRootFolder) {
 			lastImportLine = i;
@@ -120,6 +146,7 @@ export const sortImports = async (): Promise<boolean> => {
 			linesWithInfoForSort.push({
 				content: line,
 				rootFolder: importRootFolder,
+				importValue,
 				weights: sortWeights
 			});
 		} else if (_isEmptyLine(line)) {

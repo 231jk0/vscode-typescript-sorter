@@ -6,7 +6,7 @@
 	"description": "",
 	"version": "0.0.1",
 	"engines": {
-		"vscode": "^1.41.0"
+		"vscode": "^1.32.1"
 	},
 	"categories": [
 		"Other"
@@ -55,7 +55,7 @@
 		"@types/glob": "^7.1.1",
 		"@types/mocha": "^5.2.7",
 		"@types/node": "^12.11.7",
-		"@types/vscode": "^1.41.0",
+		"@types/vscode": "^1.32.1",
 		"glob": "^7.1.5",
 		"mocha": "^6.2.2",
 		"typescript": "^3.6.4",
